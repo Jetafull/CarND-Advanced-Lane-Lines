@@ -53,7 +53,7 @@ To demonstrate this step, I will describe how I apply the distortion correction 
 
 I created two detectors: yellow line and white line detector.
 
-For the yellow line detection, I use the B-channel from the LAB color space. The B-channel represents the color blue and yellow. It is very robust for detecting yellow color as I tried so far.
+For the yellow line detection, I use the B-channel from the LAB color space. The B-channel represents the color blue and yellow. It is robust for detecting yellow color as I tried so far.
 
 For the white line detection, I use the L-channel plus the Sobel x gradients. I cannot find single color channel that provide robust enough result for white line detection. And the output by only applying The Sobel x gradients thresholds give too noisy results.
 After combining the L-channel and x gradients thresholds I get much better result for white line detection.
@@ -96,6 +96,11 @@ def select_gradient_color(img, sx_thresh=(30, 100), l_thresh=(170, 255), b_thres
 
     return white_bin, yellow_bin
 ```
+
+This is an example output after applying the binarization:
+
+![binarization](./images/bin.png)
+
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image
 
 This is the code I used to transform the perpective after image undistortion. The code can also be found in the "Undistortion and Perspective Transform" part in the `lane_finding.ipynb`. I chose the hardcode the source and destination points.
@@ -147,19 +152,69 @@ I verified that my perspective transform was working as expected by drawing the 
 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
-Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
+After binarizing the image, I locate the pixel by sliding window search:
 
-![alt text][image-4]
+1. Pick up the peaks at the left and right of the histogram (aggregate by height)
+2. Start from the peaks, count the number of nonzero pixels in the window. If the number of pixels is larger than the minimum number (predefined), the x value of the center point of the nonzero points in that window will become the base value for the next window on x-axis.
+
+Based on the detected non-zero points, I conducted polynomial fit the positions with this method:
+
+![polynomial](./examples/color_fit_lines.jpg)
+
+For video pipeline, detector will search around the marings of the previous fitting. This will reduce the search time and add more robustness for pixel detection.
+
+The code for lane-line pixels finding is in the "Lane detection" part (`find_lane_pixels` and `search_around_poly`).
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
-I did this in lines # through # in my code in `my_other_file.py`
+The calculation of radius of curvature and the position of the vehicle to the line is included in the `Line` class definition:
+
+```python
+class Line():
+    # ...definitions before...
+    @property
+    def curvature(self):
+        fit = self.avg_fit
+        y_eval = np.max(self.ploty)
+        curv = ((1+(2*fit[0]*y_eval+fit[1])**2)**1.5)/np.absolute(2*fit[0])
+        return curv
+
+    @property
+    def curvature_m(self):
+        fitx = self.recent_fitx[-1]
+        fit_m = np.polyfit(self.ploty*self.ym_per_pix, fitx*self.xm_per_pix, 2)
+        y_eval = np.max(self.ploty)
+        curv_m = ((1+(2*fit_m[0]*y_eval*self.ym_per_pix+fit_m[1])**2)**1.5)/np.absolute(2*fit_m[0])
+  
+        return curv_m
+  
+    @property
+    def dist_to_lane(self):
+        h, _ = self.image_shape
+        fit = self.avg_fit
+
+        # calculate lane position at height h
+        line_x = fit[0]*h**2+fit[1]*h+fit[2]
+        return line_x
+```
+
+To calcuate the curvature in meters, I first fitted the polynomial line after converting all points into meters.
+
+To calculate the position of vehicle to the center of the lane, I used this code (`dist_to_middle` function in the "Lane detection" part in `lane_finding.ipynb`:
+
+```python
+def dist_to_middle(l_line, r_line):
+    car_pos = l_line.image_shape[0]/2
+    line_middle_pos = (r_line.dist_to_lane - l_line.dist_to_lane)
+  
+    return (car_pos - line_middle_pos)*l_line.xm_per_pix
+```
 
 #### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
 
-I implemented this step in lines # through # in my code in `yet_another_file.py` in the function `map_lane()`.  Here is an example of my result on a test image:
+I implemented this step in the `draw_lane_line` function in the `lane_finding.ipynb`. Here is an example output after drawing the fitted lines with the `cv2.fillPoly` function:
 
-![alt text][image-5]
+![unwapred](./images/unwarped.png)
 
 ---
 
@@ -175,12 +230,11 @@ Here's a [link to my video result][1]
 
 #### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+I find the binarization is the most different part for this project.
+I tried difficult combinations of color channels and gradient thresholds. My current method picks up the white line and yellow line seperately. It works well in most scenarios in both "project_video.mp4" and "challenge_video.mp4". But it failed on some of the difficult frames in "challenge_video.mp4" because of the heavy shadows.
 
-[1]:	./project_video.mp4
+Currently the entire pipeline is manually setup and all the hyperparamters are also set manually after lots of trial-and-errors.
+I would like to research on how to applying the deep learning methodology to make the lane detection task easier and more robust.
 
-[image-1]:	./test_images/test1.jpg "Road Transformed"
-[image-2]:	./examples/binary_combo_example.jpg "Binary Example"
-[image-3]:	./examples/warped_straight_lines.jpg "Warp Example"
-[image-4]:	./examples/color_fit_lines.jpg "Fit Visual"
-[image-5]:	./examples/example_output.jpg "Output"
+[1]:	./test_videos_result/project_video_result.mp4
+[2]:	./test_videos_result/challenge_video_result.mp4
