@@ -22,7 +22,7 @@ The goals / steps of this project are the following:
   * `project_video_result_diagnosis.mp4`
   * `challenge_video_result.mp4`
   * `challenge_video_result_diagnosis.mp4`
-* `images`: sample output images
+* `output_images`: sample output images
 
 ### Camera Calibration
 
@@ -39,7 +39,7 @@ I then use the `cv2.calibrateCamera()` to compute the camera calibration matrix 
 
 I uses the `cv2.undistort` function to undistort the image using the calibration. This is an example output by applying the undistortion:
 
-![calibration](./images/camera_calibration.png)
+![calibration](./output_images/camera_calibration.png)
 
 ### Pipeline (single images)
 
@@ -47,7 +47,7 @@ I uses the `cv2.undistort` function to undistort the image using the calibration
 
 To demonstrate this step, I will describe how I apply the distortion correction to one of the test images like this one:
 
-![undistort](./images/undistortion.png)
+![undistort](./output_images/undistortion.png)
 
 #### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
 
@@ -60,7 +60,7 @@ After combining the L-channel and x gradients thresholds I get much better resul
 
 I conduct normalization for both B and L channels. The thresholds are tuned by trial and error after applying to the test images and videos.
 
-This is the binarization code from the "Binaration" part in `lane_finding.ipynb`:
+This is the binarization code from the "Binarization" part in `lane_finding.ipynb`:
 
 ```python
 def select_gradient_color(img, sx_thresh=(30, 100), l_thresh=(170, 255), b_thresh = (185, 255)):
@@ -99,7 +99,7 @@ def select_gradient_color(img, sx_thresh=(30, 100), l_thresh=(170, 255), b_thres
 
 This is an example output after applying the binarization:
 
-![binarization](./images/bin.png)
+![binarization](./output_images/bin.png)
 
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image
 
@@ -146,8 +146,8 @@ class ImageProcessor:
 I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
 
 <p float="left">
-  <img src="./images/perspective1.png" width="250" />
-  <img src="./images/perspective2.png" width="250" /> 
+  <img src="./output_images/perspective1.png" width="300" />
+  <img src="./output_images/perspective2.png" width="300" />
 </p>
 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
@@ -204,8 +204,8 @@ To calculate the position of vehicle to the center of the lane, I used this code
 
 ```python
 def dist_to_middle(l_line, r_line):
-    car_pos = l_line.image_shape[0]/2
-    line_middle_pos = (r_line.dist_to_lane - l_line.dist_to_lane)
+    car_pos = l_line.image_shape[1]/2
+    line_middle_pos = (r_line.dist_to_lane + l_line.dist_to_lane) / 2
   
     return (car_pos - line_middle_pos)*l_line.xm_per_pix
 ```
@@ -214,15 +214,16 @@ def dist_to_middle(l_line, r_line):
 
 I implemented this step in the `draw_lane_line` function in the `lane_finding.ipynb`. Here is an example output after drawing the fitted lines with the `cv2.fillPoly` function:
 
-![unwapred](./images/unwarped.png)
+![unwapred](./output_images/unwarped.png)
 
 ---
 
 ### Pipeline (video)
 
-#### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
+#### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!)
 
-Here's a [link to my video result][1]
+* [Link to `project_video_result.mp4`][1]
+* [Link to `challenge_video_result.mp4`][2]
 
 ---
 
@@ -231,10 +232,12 @@ Here's a [link to my video result][1]
 #### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
 I find the binarization is the most different part for this project.
-I tried difficult combinations of color channels and gradient thresholds. My current method picks up the white line and yellow line seperately. It works well in most scenarios in both "project_video.mp4" and "challenge_video.mp4". But it failed on some of the difficult frames in "challenge_video.mp4" because of the heavy shadows.
+I tried difficult combinations of color channels and gradient thresholds. My current method picks up the white line and yellow line separately. It works well in most scenarios in both "project_video.mp4" and "challenge_video.mp4". But it failed on some of the difficult frames in "challenge_video.mp4" because of the heavy shadows.
 
-Currently the entire pipeline is manually setup and all the hyperparamters are also set manually after lots of trial-and-errors.
+Currently the entire pipeline is manually setup and all the hyperparameters are also set manually after lots of trial-and-errors.
 I would like to research on how to applying the deep learning methodology to make the lane detection task easier and more robust.
+
+Lastly, my pipeline cannot work well on the "harder_challenge_video.mp4". I am thinking how to improve the result by build a better line detector to pass this one.
 
 [1]:	./test_videos_result/project_video_result.mp4
 [2]:	./test_videos_result/challenge_video_result.mp4
