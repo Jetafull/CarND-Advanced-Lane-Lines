@@ -23,6 +23,7 @@ The goals / steps of this project are the following:
   * `challenge_video_result.mp4`
   * `challenge_video_result_diagnosis.mp4`
 * `output_images`: sample output images
+* `writeup.md`: writeup report
 
 ### Camera Calibration
 
